@@ -25,13 +25,16 @@ if (process.env.DATABASE_URL) {
         async init() {
             await pool.query(`CREATE TABLE IF NOT EXISTS teams (
                 id SERIAL PRIMARY KEY,
-                number INTEGER UNIQUE NOT NULL,
+                number INTEGER NOT NULL,
                 name TEXT NOT NULL,
                 project TEXT NOT NULL DEFAULT '',
                 category TEXT NOT NULL,
                 done BOOLEAN NOT NULL DEFAULT FALSE)`);
+            // Permettre le même numéro dans des catégories différentes
+            await pool.query(`ALTER TABLE teams DROP CONSTRAINT IF EXISTS teams_number_key`);
+            await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS teams_num_cat_idx ON teams (number, category)`);
         },
-        async list() { return (await pool.query('SELECT * FROM teams ORDER BY number')).rows.map(map); },
+        async list() { return (await pool.query('SELECT * FROM teams ORDER BY category, number')).rows.map(map); },
         async add(t) {
             try { await pool.query('INSERT INTO teams (number,name,project,category) VALUES ($1,$2,$3,$4)', [t.number, t.name, t.project, t.category]); }
             catch (e) { if (e.code === '23505') return false; throw e; }
@@ -52,7 +55,7 @@ if (process.env.DATABASE_URL) {
         async list() { return load().teams.sort((a, b) => a.number - b.number); },
         async add(t) {
             const d = load();
-            if (d.teams.some((x) => x.number === t.number)) return false;
+            if (d.teams.some((x) => x.number === t.number && x.category === t.category)) return false;
             d.teams.push({ id: d.teams.reduce((a, x) => Math.max(a, x.id), 0) + 1, ...t, done: false });
             save(d); return true;
         },
@@ -126,12 +129,13 @@ const server = http.createServer(async (req, res) => {
     });
 });
 
-// Équipes par défaut : 1-5 LAB, 6-10 Scale, 11-15 Idea (créées seulement si la base est vide)
+// Équipes par défaut : 1 à 5 Idea, 1 à 5 Scale, 1 à 5 LAB
 async function seed() {
     if ((await store.list()).length) return;
-    for (let n = 1; n <= 15; n++) {
-        const category = n <= 5 ? 'lab' : n <= 10 ? 'scale' : 'idea';
-        await store.add({ number: n, name: `Équipe ${n}`, project: '', category });
+    for (const cat of ['idea', 'scale', 'lab']) {
+        for (let n = 1; n <= 5; n++) {
+            await store.add({ number: n, name: `Équipe ${n}`, project: '', category: cat });
+        }
     }
 }
 
