@@ -136,6 +136,7 @@ body.done .time{font-size:15cqw;letter-spacing:2px;white-space:nowrap;text-align
     </div>
     <div class="actions">
       <button class="btn" id="startBtn">Lancer le countdown</button>
+      <button class="btn ghost" id="skipBtn" style="display:none">Terminer plus tôt ⏭</button>
       <button class="btn" id="qBtn" style="display:none">Passer aux questions ▶</button>
       <button class="btn" id="nextBtn" style="display:none">Retour à la roue</button>
     </div>
@@ -349,13 +350,13 @@ function showCountdown(ph = 'pitch') {
   body.dataset.view = 'count'; body.classList.remove('danger', 'done'); state = 'idle';
   lastSec = -1; render(TOTAL * 1000); labelEl.textContent = phaseLabel();
   $('startBtn').textContent = phase === 'pitch' ? 'Lancer le countdown' : 'Lancer les questions';
-  $('startBtn').style.display = ''; $('nextBtn').style.display = 'none'; $('qBtn').style.display = 'none';
+  $('startBtn').style.display = ''; $('skipBtn').style.display = 'none'; $('nextBtn').style.display = 'none'; $('qBtn').style.display = 'none';
 }
 const phaseLabel = () => phase === 'pitch' ? 'Présentation' : 'Questions';
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 function startIntro() {
-  if (state !== 'idle') return; ensureAudio(); state = 'intro'; $('startBtn').style.display = 'none';
+  if (state !== 'idle') return; ensureAudio(); state = 'intro'; $('startBtn').style.display = 'none'; $('skipBtn').style.display = 'none';
   const ov = $('intro'), num = $('introNum'); ov.classList.add('show');
   const step = (txt, go) => { num.textContent = txt; num.classList.toggle('go', !!go); num.classList.remove('pop'); void num.offsetWidth; num.classList.add('pop'); };
   ['3', '2', '1'].forEach((n, i) => setTimeout(() => { step(n); sfx.introBeep(); }, 250 + i * 1000));
@@ -363,19 +364,20 @@ function startIntro() {
   setTimeout(() => { ov.classList.remove('show'); startRunning(); }, 4150);
 }
 function startRunning() {
-  state = 'running'; endAt = performance.now() + TOTAL * 1000; lastSec = TOTAL; rafId = requestAnimationFrame(loop);
+  state = 'running'; $('skipBtn').style.display = ''; endAt = performance.now() + TOTAL * 1000; lastSec = TOTAL; rafId = requestAnimationFrame(loop);
   clearInterval(tickTimer);
   tickTimer = setInterval(() => { if (state !== 'running') return clearInterval(tickTimer); const r = Math.max(0, endAt - performance.now()); render(r); if (r <= 0) complete(); }, 200);
 }
 function complete() {
   if (state !== 'running') return; state = 'done'; cancelAnimationFrame(rafId); clearInterval(tickTimer);
+  $('skipBtn').style.display = 'none';
   render(0); body.classList.add('done'); timeEl.textContent = 'TIME UP'; labelEl.textContent = '';
   sfx.finish(); confetti(['#ffc65c', '#ff7a2f', '#ff4d6d', '#fff0c2', '#fff']);
   if (phase === 'pitch') { $('qBtn').style.display = ''; return; }
   fetch(`/api/teams/${current.id}/done`, { method: 'POST' });
   $('nextBtn').style.display = '';
 }
-async function backToWheel() { body.classList.remove('danger', 'done'); body.dataset.view = 'wheel'; state = 'idle'; await loadTeams(); }
+async function backToWheel() { body.classList.remove('danger', 'done'); body.dataset.view = 'wheel'; state = 'idle'; $('skipBtn').style.display = 'none'; await loadTeams(); }
 
 /* ---------- Confettis ---------- */
 function confetti(colors) {
@@ -394,6 +396,7 @@ function confetti(colors) {
 $('spinBtn').onclick = spin;
 $('goCount').onclick = () => { ensureAudio(); showCountdown(); };
 $('startBtn').onclick = startIntro;
+$('skipBtn').onclick = () => { if (state === 'running') complete(); };
 $('nextBtn').onclick = backToWheel;
 $('qBtn').onclick = () => showCountdown('questions');
 $('fullscreenBtn').onclick = () => document.documentElement.requestFullscreen?.();
