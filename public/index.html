@@ -216,7 +216,7 @@ async function loadTeams() {
   const round = ROUNDS.find((c) => left.some((t) => t.category === c));
   remaining = round ? mixCategories(left.filter((t) => t.category === round)) : mixCategories(left);
   const rb = $('roundBadge');
-  if (round) { rb.style.display = ''; rb.textContent = `Manche ${CAT[round].n} · ${remaining.length} restante(s)`; rb.style.background = CAT[round].c; rb.style.color = CAT[round].t; }
+  if (round) { rb.style.display = ''; rb.textContent = CAT[round].n; rb.style.background = CAT[round].c; rb.style.color = CAT[round].t; }
   else rb.style.display = 'none';
   drawWheel();
   $('spinBtn').disabled = remaining.length === 0;
