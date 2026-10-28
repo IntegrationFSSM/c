@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin';
 const PUBLIC = path.join(__dirname, 'public');
 const CATEGORIES = ['idea', 'lab', 'scale'];
-let countdownSeconds = 10; // Valeur par défaut (10s pour tester, réglable via /admin)
+let countdownSeconds = 300;
 
 /* ---------- Couche de stockage ---------- */
 let store;

@@ -132,7 +132,7 @@ body.done .time{font-size:15cqw;letter-spacing:2px;white-space:nowrap;text-align
           <circle class="knob" id="knob" r="9" cx="360" cy="200"/>
         </g>
       </svg>
-      <div class="center"><div class="time" id="time">180</div><div class="label" id="label">Secondes</div></div>
+      <div class="center"><div class="time" id="time">300</div><div class="label" id="label">Secondes</div></div>
     </div>
     <div class="actions">
       <button class="btn" id="startBtn">Lancer le countdown</button>
@@ -159,7 +159,7 @@ body.done .time{font-size:15cqw;letter-spacing:2px;white-space:nowrap;text-align
 <script>
 const $ = (id) => document.getElementById(id);
 const CAT = { idea: { c: '#ffd23f', t: '#3a2a00', n: 'Idea' }, lab: { c: '#6ec6f0', t: '#06283a', n: 'LAB' }, scale: { c: '#8b5a2b', t: '#fff4e6', n: 'Scale' } };
-let TOTAL = 10;
+const TOTAL = 300;
 const ROUNDS = ['idea', 'scale', 'lab'], R0 = 0, R = 160, CIRC = 2 * Math.PI * R;
 let teams = [], remaining = [], rot = Math.random() * Math.PI * 2, spinning = false, current = null, phase = 'pitch';
 
@@ -210,10 +210,6 @@ const sfx = {
 
 /* ---------- Données ---------- */
 async function loadTeams() {
-  try {
-    const cfg = await (await fetch('/api/config')).json();
-    if (cfg && cfg.countdownSeconds) TOTAL = cfg.countdownSeconds;
-  } catch (e) {}
   teams = await (await fetch('/api/teams')).json();
   const left = teams.filter((t) => !t.done);
   // Manche en cours : première catégorie (Idea → Scale → LAB) qui a encore des équipes
