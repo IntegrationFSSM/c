@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin · Équipes</title>
+<meta name="description" content="Gestion des équipes : numéro, nom, projet et catégorie.">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--idea:#ffd23f;--lab:#6ec6f0;--scale:#8b5a2b;--gold:#ffc65c;--sun:#ff7a2f}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Outfit',system-ui,sans-serif;color:#fff7ee;background:linear-gradient(rgba(20,8,20,.82),rgba(20,8,20,.9)),url(francois.png) center/cover fixed;min-height:100vh}
+.logo{display:block;width:100%;background:rgba(255,255,255,.94);padding:8px 20px;border-bottom:3px solid rgba(255,150,60,.8)}
+.logo.b{border-bottom:0;border-top:3px solid rgba(255,150,60,.8);margin-top:30px}
+main{max-width:900px;margin:0 auto;padding:24px 16px}
+h1{font-size:1.8rem;font-weight:800;margin-bottom:16px}
+.card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);border-radius:18px;padding:20px;margin-bottom:20px;backdrop-filter:blur(10px)}
+form{display:grid;grid-template-columns:90px 1fr 1fr 150px auto;gap:10px}
+input,select{padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.35);color:#fff;font-family:inherit;font-size:1rem;min-width:0}
+select option{color:#000}
+button{padding:12px 20px;border:0;border-radius:10px;font-family:inherit;font-weight:800;cursor:pointer;color:#2a1220;background:linear-gradient(135deg,var(--gold),var(--sun));transition:transform .15s}
+button:hover{transform:translateY(-2px)}
+button.sm{padding:6px 12px;font-size:.8rem}
+button.ghost{background:rgba(255,255,255,.12);color:#fff}
+button.danger{background:#ff4d6d;color:#fff}
+table{width:100%;border-collapse:collapse}
+td,th{padding:10px 8px;text-align:left;border-bottom:1px solid rgba(255,255,255,.1)}
+th{font-size:.75rem;letter-spacing:2px;text-transform:uppercase;color:rgba(255,240,225,.6)}
+.pill{display:inline-block;padding:3px 12px;border-radius:999px;font-weight:800;font-size:.8rem;color:#1c1008}
+.num{font-weight:800;font-size:1.3rem}
+.done{opacity:.45}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#msg{color:#ff9bb0;min-height:1.2em;margin-top:8px}
+a{color:var(--gold)}
+@media(max-width:700px){form{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<img class="logo" src="haut.png" alt="Partenaires">
+<main>
+  <h1>Administration des équipes</h1>
+
+  <div class="card" id="login">
+    <form id="loginForm" style="grid-template-columns:1fr auto">
+      <input id="pw" type="password" placeholder="Mot de passe admin" autocomplete="current-password" required>
+      <button>Connexion</button>
+    </form>
+    <div id="msg"></div>
+  </div>
+
+  <div id="panel" hidden>
+    <div class="card">
+      <form id="addForm">
+        <input id="number" type="number" min="1" placeholder="N°" required>
+        <input id="name" placeholder="Nom de l'équipe" required>
+        <input id="project" placeholder="Nom du projet">
+        <select id="category">
+          <option value="idea">🟡 Idea</option>
+          <option value="lab">🔵 LAB</option>
+          <option value="scale">🟤 Scale</option>
+        </select>
+        <button>Ajouter</button>
+      </form>
+      <div id="msg2" style="color:#ff9bb0;margin-top:8px"></div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:10px">
+        <strong id="count"></strong>
+        <div class="row">
+          <a href="/" target="_blank">Ouvrir la roue ↗</a>
+          <button class="ghost sm" id="reset">Réinitialiser les passages</button>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>N°</th><th>Équipe</th><th>Projet</th><th>Catégorie</th><th>Statut</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+<img class="logo b" src="bas.png" alt="Organisateurs">
+
+<script>
+const $ = (id) => document.getElementById(id);
+const C = { idea: ['#ffd23f', '#3a2a00', 'Idea'], lab: ['#6ec6f0', '#06283a', 'LAB'], scale: ['#8b5a2b', '#fff4e6', 'Scale'] };
+let pw = sessionStorage.getItem('pw') || '';
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+async function api(method, url, body) {
+  const r = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'x-admin-password': pw }, body: body ? JSON.stringify(body) : undefined });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'Erreur');
+  return j;
+}
+async function refresh() {
+  const teams = await (await fetch('/api/teams')).json();
+  const left = teams.filter((t) => !t.done).length;
+  $('count').textContent = `${teams.length} équipes · ${left} restantes`;
+  $('rows').innerHTML = teams.map((t) => `<tr class="${t.done ? 'done' : ''}">
+    <td class="num">${t.number}</td><td>${esc(t.name)}</td><td>${esc(t.project || '')}</td>
+    <td><span class="pill" style="background:${C[t.category][0]};color:${C[t.category][1]}">${C[t.category][2]}</span></td>
+    <td><button class="ghost sm" data-t="${t.id}">${t.done ? 'Passée ✔' : 'À passer'}</button></td>
+    <td><button class="danger sm" data-d="${t.id}">Supprimer</button></td></tr>`).join('');
+}
+async function enter() { $('login').hidden = true; $('panel').hidden = false; await refresh(); }
+$('loginForm').onsubmit = async (e) => {
+  e.preventDefault(); pw = $('pw').value;
+  try { await api('POST', '/api/admin/check'); sessionStorage.setItem('pw', pw); enter(); } catch (er) { $('msg').textContent = er.message; }
+};
+$('addForm').onsubmit = async (e) => {
+  e.preventDefault();
+  try {
+    await api('POST', '/api/admin/teams', { number: $('number').value, name: $('name').value, project: $('project').value, category: $('category').value });
+    $('msg2').textContent = ''; $('number').value = +$('number').value + 1; $('name').value = ''; $('project').value = ''; $('name').focus(); refresh();
+  } catch (er) { $('msg2').textContent = er.message; }
+};
+$('rows').onclick = async (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.t) await api('POST', `/api/admin/teams/${b.dataset.t}/toggle`);
+  if (b.dataset.d && confirm('Supprimer cette équipe ?')) await api('DELETE', `/api/admin/teams/${b.dataset.d}`);
+  refresh();
+};
+$('reset').onclick = async () => { if (confirm('Remettre toutes les équipes dans la roue ?')) { await api('POST', '/api/admin/reset'); refresh(); } };
+if (pw) api('POST', '/api/admin/check').then(enter).catch(() => {});
+</script>
+</body>
+</html>

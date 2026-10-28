@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roue des équipes · Compte à rebours</title>
+<meta name="description" content="Tirage au sort des équipes par roue, suivi d'un compte à rebours de 3 minutes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&family=Inter:wght@200;300;500&display=swap" rel="stylesheet">
+<style>
+:root{--sun:#ff7a2f;--gold:#ffc65c;--amber:#ff9f43;--rose:#ff4d6d;--ink:#fff7ee;--muted:rgba(255,240,225,.72);
+--idea:#ffd23f;--lab:#6ec6f0;--scale:#8b5a2b}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Outfit',system-ui,sans-serif;color:var(--ink);background:#1a0d14;overflow:hidden;user-select:none;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
+.bg{position:fixed;inset:0;background:url(francois.png) center 60%/cover no-repeat;z-index:0}
+.shade{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse 60% 70% at 50% 48%,rgba(20,8,20,.55),rgba(20,8,20,.15) 70%),linear-gradient(180deg,rgba(25,12,40,.35),transparent 40%,rgba(40,12,0,.45))}
+.vignette{position:fixed;inset:0;z-index:2;pointer-events:none}
+.vignette.flash{animation:vflash .9s ease-out}
+@keyframes vflash{0%{box-shadow:inset 0 0 260px 80px rgba(255,40,70,.75)}100%{box-shadow:inset 0 0 220px 40px rgba(255,40,70,0)}}
+.logo{display:block;width:100%;height:auto;position:relative;z-index:30;flex:0 0 auto;padding:8px clamp(10px,2vw,28px);background:rgba(255,255,255,.94)}
+.logo-top{box-shadow:0 6px 24px rgba(0,0,0,.25);border-bottom:3px solid rgba(255,150,60,.8)}
+.logo-bottom{box-shadow:0 -6px 24px rgba(0,0,0,.25);border-top:3px solid rgba(255,150,60,.8)}
+.event-logo{position:absolute;top:24px;left:24px;z-index:5;width:clamp(150px,20vw,320px);filter:drop-shadow(0 0 8px rgba(255,255,255,.95)) drop-shadow(0 2px 20px rgba(0,0,0,.6));pointer-events:none}
+.stage{position:relative;z-index:3;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 16px;gap:12px}
+.view{display:none;flex-direction:column;align-items:center;gap:14px}
+body[data-view=wheel] #wheelView,body[data-view=count] #countView{display:flex;animation:cardIn .8s cubic-bezier(.2,.9,.25,1.1) both}
+@keyframes cardIn{from{opacity:0;transform:translateY(24px) scale(.96)}to{opacity:1;transform:none}}
+#fullscreenBtn{position:absolute;top:10px;right:12px;z-index:6;width:38px;height:38px;border-radius:10px;cursor:pointer;display:grid;place-items:center;color:var(--ink);background:rgba(30,12,30,.45);border:1px solid rgba(255,230,200,.25);opacity:.8}
+#fullscreenBtn:hover{opacity:1}
+#fullscreenBtn svg{width:18px;height:18px}
+:fullscreen #fullscreenBtn{display:none}
+.adminLink{position:absolute;top:56px;right:14px;z-index:6;font-size:.7rem;color:var(--muted);letter-spacing:1px;text-decoration:none;opacity:.6}
+.adminLink:hover{opacity:1}
+
+/* ---------- Roue ---------- */
+.wheelWrap{position:relative;width:min(88vw,56vh,560px);aspect-ratio:1;filter:drop-shadow(0 14px 36px rgba(0,0,0,.5))}
+#wheel{width:100%;height:100%;display:block}
+.pointer{position:absolute;left:50%;top:-14px;width:38px;height:48px;margin-left:-19px;z-index:4;filter:drop-shadow(0 4px 6px rgba(0,0,0,.6))}
+.hub{position:absolute;left:50%;top:50%;width:25%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;z-index:3;display:grid;place-items:center;white-space:nowrap;font-weight:900;font-size:clamp(.75rem,2.6vmin,1.35rem);letter-spacing:1px;color:#2a1220;cursor:pointer;border:0;font-family:inherit;text-transform:uppercase;background:radial-gradient(circle at 35% 30%,#fff3d6,var(--gold) 55%,var(--sun));box-shadow:0 0 0 6px rgba(255,255,255,.9),0 8px 24px rgba(0,0,0,.5);transition:transform .2s}
+.hub:hover:not(:disabled){transform:translate(-50%,-50%) scale(1.08)}
+.hub:disabled{cursor:default;filter:grayscale(.4)}
+.legend{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;font-size:.78rem;font-weight:600;letter-spacing:.4px;background:rgba(20,8,20,.55);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(8px)}
+.chip i{width:12px;height:12px;border-radius:50%}
+.remain{font-size:.9rem;letter-spacing:3px;text-transform:uppercase;color:var(--muted);text-shadow:0 2px 8px rgba(0,0,0,.7)}
+.empty{font-size:1.2rem;text-align:center;padding:30px;background:rgba(20,8,20,.6);border-radius:20px}
+
+/* ---------- Boutons ---------- */
+.btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;gap:12px;min-width:240px;padding:16px 38px;border:0;border-radius:999px;cursor:pointer;font-family:inherit;font-size:1.05rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:#2a1220;background:linear-gradient(135deg,var(--gold),var(--amber) 45%,var(--sun));box-shadow:0 14px 40px -10px rgba(255,122,47,.9),inset 0 1px 0 rgba(255,255,255,.6);transition:transform .2s,box-shadow .3s}
+.btn::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.65),transparent);transform:skewX(-20deg);animation:shine 3.2s ease-in-out infinite}
+@keyframes shine{0%,60%{left:-60%}100%{left:130%}}
+.btn:hover:not(:disabled){transform:translateY(-3px) scale(1.03)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.ghost{background:rgba(20,8,20,.55);color:var(--ink);box-shadow:none;border:1px solid rgba(255,255,255,.25);min-width:0;padding:12px 26px;font-size:.85rem}
+.btn.ghost::after{display:none}
+
+/* ---------- Résultat ---------- */
+.overlay{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:20px;background:radial-gradient(circle,rgba(40,12,30,.55),rgba(10,4,14,.85));backdrop-filter:blur(8px);opacity:0;visibility:hidden;transition:opacity .45s,visibility .45s}
+.overlay.show{opacity:1;visibility:visible}
+.overlay.show>*{animation:rise-in .8s cubic-bezier(.2,1.3,.3,1) both}
+.overlay.show>*:nth-child(2){animation-delay:.12s}.overlay.show>*:nth-child(3){animation-delay:.24s}.overlay.show>*:nth-child(4){animation-delay:.36s}.overlay.show>*:nth-child(5){animation-delay:.48s}
+@keyframes rise-in{from{opacity:0;transform:translateY(40px) scale(.9)}to{opacity:1;transform:none}}
+.badge{padding:8px 22px;border-radius:999px;font-weight:800;letter-spacing:4px;text-transform:uppercase;font-size:.9rem;color:#1c1008}
+.bigNum{font-weight:900;font-size:clamp(7rem,30vmin,18rem);line-height:1;color:var(--cat,var(--gold));text-shadow:0 0 50px var(--cat,var(--gold));-webkit-text-stroke:3px rgba(255,255,255,.9)}
+.teamName{font-weight:900;font-size:clamp(2rem,8vmin,5rem);letter-spacing:2px}
+.projName{font-size:clamp(1.1rem,3.4vmin,2rem);color:var(--muted);letter-spacing:2px}
+#confetti{position:fixed;inset:0;z-index:60;pointer-events:none}
+
+/* ---------- Countdown ---------- */
+.teamBar{display:flex;align-items:center;gap:12px;padding:8px 22px;border-radius:999px;background:rgba(20,8,20,.6);border:2px solid var(--cat,var(--gold));font-weight:800;letter-spacing:1.5px;font-size:1.1rem}
+.teamBar b{color:var(--cat,var(--gold));font-size:1.5rem}
+.dial{position:relative;width:min(86vw,46vh,520px);aspect-ratio:1;filter:drop-shadow(0 10px 30px rgba(0,0,0,.35))}
+.dial svg{width:100%;height:100%;overflow:visible}
+.ticks line{stroke:rgba(255,235,210,.28);stroke-width:2;stroke-linecap:round}
+.ticks line.major{stroke:rgba(255,235,210,.6);stroke-width:3}
+.track{stroke:rgba(255,255,255,.10)}
+.progress{stroke:url(#gradSun);filter:drop-shadow(0 0 10px rgba(255,150,60,.75))}
+.knob{fill:#fff;filter:drop-shadow(0 0 8px rgba(255,200,120,1))}
+body.danger .progress{stroke:url(#gradDanger);filter:drop-shadow(0 0 14px rgba(255,60,90,.95))}
+.center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.time{font-family:'Inter',sans-serif;font-weight:300;font-size:clamp(5rem,min(30vw,22vh),12rem);letter-spacing:-4px;font-variant-numeric:tabular-nums;line-height:1;text-shadow:0 4px 18px rgba(0,0,0,.45),0 0 40px rgba(255,150,60,.6)}
+body.danger .time{color:#ffd0d8;text-shadow:0 0 30px rgba(255,60,90,.95)}
+.time.beat{animation:beat .5s cubic-bezier(.2,1.6,.4,1)}
+@keyframes beat{0%{transform:scale(1.22)}100%{transform:scale(1)}}
+.dial{container-type:inline-size}
+body.done .time{font-size:15cqw;letter-spacing:2px;white-space:nowrap;text-align:center;width:100%;color:#ffd0d8;font-weight:500;text-shadow:0 0 30px rgba(255,60,90,.95)}
+.label{margin-top:10px;font-size:.72rem;font-weight:600;letter-spacing:6px;text-transform:uppercase;color:var(--muted)}
+.actions{display:flex;gap:12px;min-height:56px;align-items:center}
+.intro-num{font-weight:900;font-size:clamp(9rem,38vmin,22rem);line-height:1;background:linear-gradient(180deg,#fff3d6,var(--gold) 40%,var(--sun));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 10px 40px rgba(255,122,47,.8))}
+.intro-num.go{font-size:clamp(3.4rem,13vmin,9rem);letter-spacing:4px}
+.intro-num.pop{animation:pop 1s cubic-bezier(.15,.9,.3,1) both}
+@keyframes pop{0%{opacity:0;transform:scale(2.4);filter:blur(12px)}25%{opacity:1;transform:scale(1);filter:blur(0)}80%{opacity:1;transform:scale(.94)}100%{opacity:0;transform:scale(.7)}}
+#intro.overlay.show>*{animation:none}
+#intro .intro-num.pop{animation:pop 1s cubic-bezier(.15,.9,.3,1) both}
+@media(max-height:640px){.remain{display:none}}
+</style>
+</head>
+<body data-view="wheel">
+<div class="bg" aria-hidden="true"></div><div class="shade" aria-hidden="true"></div><div class="vignette" id="vignette" aria-hidden="true"></div>
+<img class="logo logo-top" src="haut.png" alt="Partenaires">
+
+<main class="stage">
+  <img class="event-logo" src="event.png" alt="Moroccan Sahara Innovation Challenge 2026">
+  <button id="fullscreenBtn" title="Plein écran" aria-label="Plein écran"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button>
+  <h1 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Roue des équipes et compte à rebours</h1>
+
+  <!-- Vue roue -->
+  <section class="view" id="wheelView">
+    <div class="wheelWrap" id="wheelWrap">
+      <svg class="pointer" viewBox="0 0 38 48"><path d="M19 48 2 8a19 19 0 0 1 34 0z" fill="#fff" stroke="#ff7a2f" stroke-width="3"/></svg>
+      <canvas id="wheel"></canvas>
+      <button class="hub" id="spinBtn">Tourner</button>
+    </div>
+  </section>
+
+  <!-- Vue countdown -->
+  <section class="view" id="countView">
+    <div class="teamBar" id="teamBar"></div>
+    <div class="dial">
+      <svg viewBox="0 0 400 400">
+        <defs>
+          <linearGradient id="gradSun" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff0c2"/><stop offset="40%" stop-color="#ffc65c"/><stop offset="100%" stop-color="#ff6a2b"/></linearGradient>
+          <linearGradient id="gradDanger" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ffb3c1"/><stop offset="100%" stop-color="#ff2a55"/></linearGradient>
+        </defs>
+        <g class="ticks" id="ticks"></g>
+        <g transform="rotate(-90 200 200)">
+          <circle class="track" cx="200" cy="200" r="160" fill="none" stroke-width="12"/>
+          <circle class="progress" id="progress" cx="200" cy="200" r="160" fill="none" stroke-width="12" stroke-linecap="round"/>
+          <circle class="knob" id="knob" r="9" cx="360" cy="200"/>
+        </g>
+      </svg>
+      <div class="center"><div class="time" id="time">180</div><div class="label" id="label">Secondes</div></div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="startBtn">Lancer le countdown</button>
+      <button class="btn" id="qBtn" style="display:none">Passer aux questions ▶</button>
+      <button class="btn" id="nextBtn" style="display:none">Retour à la roue</button>
+    </div>
+  </section>
+</main>
+<img class="logo logo-bottom" src="bas.png" alt="Organisateurs">
+
+<!-- Résultat du tirage -->
+<div class="overlay" id="result">
+  <div class="badge" id="rCat"></div>
+  <div class="bigNum" id="rNum"></div>
+  <div class="teamName" id="rName"></div>
+  <div class="projName" id="rProj"></div>
+  <button class="btn" id="goCount">Passer au chrono ▶</button>
+</div>
+
+<div class="overlay" id="intro"><div class="intro-num" id="introNum">3</div></div>
+<canvas id="confetti"></canvas>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const CAT = { idea: { c: '#ffd23f', t: '#3a2a00', n: 'Idea' }, lab: { c: '#6ec6f0', t: '#06283a', n: 'LAB' }, scale: { c: '#8b5a2b', t: '#fff4e6', n: 'Scale' } };
+const TOTAL = 300, R = 160, CIRC = 2 * Math.PI * R;
+let teams = [], remaining = [], rot = Math.random() * Math.PI * 2, spinning = false, current = null, phase = 'pitch';
+
+/* ---------- Audio ---------- */
+let actx, master;
+function ensureAudio() {
+  if (!actx) { actx = new (window.AudioContext || window.webkitAudioContext)(); const c = actx.createDynamicsCompressor(); master = actx.createGain(); master.gain.value = .9; master.connect(c).connect(actx.destination); }
+  if (actx.state === 'suspended') actx.resume();
+}
+function tone(f, s, d, { type = 'sine', vol = .3, glideTo = null } = {}) {
+  if (!actx) return; const t = actx.currentTime + s, o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t); if (glideTo) o.frequency.exponentialRampToValueAtTime(glideTo, t + d);
+  g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .006); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+  o.connect(g).connect(master); o.start(t); o.stop(t + d + .05);
+}
+const sfx = {
+  // Peg qui frappe la languette (style roue de 8 Ball Pool) : claquement sec + petit "tok" plastique
+  click(speed = .5) {
+    if (!actx) return;
+    const t = actx.currentTime, k = .92 + Math.random() * .16;
+    if (!sfx._noise) { // bruit blanc court, créé une seule fois
+      const b = actx.createBuffer(1, actx.sampleRate * .05, actx.sampleRate), d = b.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+      sfx._noise = b;
+    }
+    const n = actx.createBufferSource(), bp = actx.createBiquadFilter(), ng = actx.createGain();
+    n.buffer = sfx._noise; bp.type = 'bandpass'; bp.frequency.value = 3200 * k; bp.Q.value = 1.4;
+    ng.gain.value = .55; n.connect(bp).connect(ng).connect(master); n.start(t);
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime((1500 + 500 * speed) * k, t); o.frequency.exponentialRampToValueAtTime(520 * k, t + .035);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.38, t + .002); g.gain.exponentialRampToValueAtTime(.0001, t + .06);
+    o.connect(g).connect(master); o.start(t); o.stop(t + .07);
+    // la languette est repoussée puis retombe (pivot en haut)
+    const pt = document.querySelector('.pointer'); pt.style.transformOrigin = '50% 0%';
+    pt.animate([{ transform: `rotate(${-16 - 10 * speed}deg)` }, { transform: 'rotate(0deg)' }], { duration: 110, easing: 'ease-out' });
+  },
+  whoosh() {},
+  win() {
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => { tone(f, i * .11, .7, { type: 'triangle', vol: .3 }); tone(f * 2, i * .11, .4, { vol: .06 }); });
+    [523.25, 659.25, 783.99, 1046.5].forEach((f) => tone(f, .55, 1.2, { type: 'triangle', vol: .22 }));
+    tone(2093, .6, .8, { vol: .08 });
+  },
+  introBeep() { tone(660, 0, .35, { type: 'triangle', vol: .45 }); tone(1320, 0, .18, { vol: .12 }); },
+  go() { tone(300, 0, .45, { type: 'sawtooth', vol: .06, glideTo: 1400 }); tone(1046.5, .02, .9, { type: 'triangle', vol: .45 }); tone(1568, .02, .9, { vol: .18 }); },
+  tick(last) { const f = last ? 1760 : 1320; tone(f, 0, .14, { type: 'square', vol: .14 }); tone(f * 2, 0, .08, { vol: .08 }); },
+  finish() { const b = (s, d) => { tone(155, s, d, { type: 'sawtooth', vol: .32 }); tone(158, s, d, { type: 'sawtooth', vol: .32 }); tone(77.5, s, d, { type: 'square', vol: .22 }); }; b(0, .55); b(.7, .55); }
+};
+
+/* ---------- Données ---------- */
+async function loadTeams() {
+  teams = await (await fetch('/api/teams')).json();
+  remaining = mixCategories(teams.filter((t) => !t.done));
+  drawWheel();
+  const left = remaining.length;
+  $('spinBtn').disabled = left === 0;
+}
+
+/* ---------- Mélange : jamais deux équipes de même catégorie côte à côte (si possible) ---------- */
+function mixCategories(list) {
+  const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const clashes = (a) => a.reduce((n, t, i) => n + (a.length > 1 && t.category === a[(i + 1) % a.length].category ? 1 : 0), 0);
+  let best = null, bestScore = Infinity;
+  for (let k = 0; k < 300 && bestScore > 0; k++) {
+    const pools = {};
+    shuffle(list).forEach((t) => (pools[t.category] = pools[t.category] || []).push(t));
+    const out = [];
+    while (out.length < list.length) {
+      const last = out.length ? out[out.length - 1].category : null;
+      const cats = Object.keys(pools).filter((c) => pools[c].length);
+      // on prend la catégorie la plus fournie (≠ précédente), avec un peu de hasard
+      let opts = cats.filter((c) => c !== last); if (!opts.length) opts = cats;
+      const max = Math.max(...opts.map((c) => pools[c].length));
+      const top = opts.filter((c) => pools[c].length >= max - (Math.random() < .3 ? 1 : 0));
+      out.push(pools[top[Math.floor(Math.random() * top.length)]].pop());
+    }
+    const s = clashes(out); if (s < bestScore) { bestScore = s; best = out; }
+  }
+  return best || list;
+}
+
+/* ---------- Dessin de la roue ---------- */
+const cv = $('wheel');
+function drawWheel() {
+  const size = $('wheelWrap').clientWidth, dpr = window.devicePixelRatio || 1;
+  cv.width = cv.height = size * dpr;
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const cx = size / 2, r = size / 2 - 8, n = remaining.length;
+  ctx.clearRect(0, 0, size, size);
+  ctx.save(); ctx.translate(cx, cx); ctx.rotate(rot);
+  if (!n) {
+    ctx.fillStyle = 'rgba(20,8,20,.7)'; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = `800 ${size * .06}px Outfit`;
+    ctx.fillText(teams.length ? 'Toutes les équipes' : 'Aucune équipe', 0, -8); ctx.fillText(teams.length ? 'sont passées 🎉' : 'Ajoutez-en dans /admin', 0, size * .07);
+  }
+  const s = (Math.PI * 2) / (n || 1);
+  remaining.forEach((t, i) => {
+    // Couleur de la catégorie : jaune (Idea), bleu ciel (LAB), marron (Scale), éparpillées par mixCategories
+    const c = CAT[t.category] || { c: '#fff0c2', t: '#3a1d00' };
+    const a0 = -Math.PI / 2 + i * s, a1 = a0 + s;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, r, a0, a1); ctx.closePath();
+    const g = ctx.createRadialGradient(0, 0, r * .2, 0, 0, r); g.addColorStop(0, shade(c.c, .25)); g.addColorStop(1, c.c);
+    ctx.fillStyle = g; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = '#d99a1e'; ctx.stroke();
+    ctx.save(); ctx.rotate(a0 + s / 2); ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillStyle = c.t;
+    const fs = Math.min(size * .09, (r * .62 * s) / 1.3 + 4);
+    ctx.font = `900 ${Math.max(14, fs)}px Outfit`; ctx.fillText(t.number, r - 20, 0); ctx.restore();
+    // pegs blancs au bord (ce sont eux qui frappent la languette)
+    ctx.beginPath(); ctx.arc(Math.cos(a0) * (r - 7), Math.sin(a0) * (r - 7), 5, 0, 7); ctx.fillStyle = '#e8a91f'; ctx.fill();
+  });
+  ctx.restore();
+  ctx.beginPath(); ctx.arc(cx, cx, r + 3, 0, 7); ctx.lineWidth = 8; ctx.strokeStyle = '#e0a420'; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cx, r + 3, 0, 7); ctx.lineWidth = 2; ctx.strokeStyle = '#ffe08a'; ctx.stroke();
+}
+function shade(hex, a) { const n = parseInt(hex.slice(1), 16); const m = (v) => Math.round(v + (255 - v) * a); return `rgb(${m(n >> 16)},${m((n >> 8) & 255)},${m(n & 255)})`; }
+addEventListener('resize', drawWheel);
+
+/* ---------- Rotation ---------- */
+function spin() {
+  if (spinning || !remaining.length) return;
+  ensureAudio(); sfx.whoosh(); spinning = true; $('spinBtn').disabled = true;
+  const n = remaining.length, s = Math.PI * 2 / n, w = Math.floor(Math.random() * n);
+  const center = w * s + s / 2 + (Math.random() - .5) * s * .6;
+  const TAU = Math.PI * 2, from = rot;
+  const delta = ((((-center - from) % TAU) + TAU) % TAU) + TAU * (6 + Math.floor(Math.random() * 3));
+  const dur = 6500, t0 = performance.now();
+  let lastSeg = -1;
+  (function frame(now) {
+    const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 4);
+    rot = from + delta * e; drawWheel();
+    const seg = Math.floor((((-rot % TAU) + TAU) % TAU) / s);
+    if (seg !== lastSeg) { if (lastSeg !== -1) sfx.click(1 - p); lastSeg = seg; }
+    if (p < 1) return requestAnimationFrame(frame);
+    rot = rot % TAU; spinning = false; reveal(remaining[w]);
+  })(t0);
+}
+
+function reveal(t) {
+  current = t; const c = CAT[t.category];
+  $('result').style.setProperty('--cat', c.c);
+  $('rCat').textContent = c.n; $('rCat').style.background = c.c; $('rCat').style.color = c.t;
+  $('rNum').textContent = t.number; $('rName').textContent = t.name; $('rProj').textContent = t.project || '';
+  $('result').classList.add('show'); sfx.win(); confetti([c.c, '#ffffff', '#ffc65c']);
+}
+
+/* ---------- Countdown ---------- */
+const progress = $('progress'), knob = $('knob'), timeEl = $('time'), labelEl = $('label'), body = document.body;
+progress.style.strokeDasharray = CIRC;
+(function ticks() {
+  const g = $('ticks');
+  for (let i = 0; i < 60; i++) {
+    const a = i / 60 * Math.PI * 2 - Math.PI / 2, mj = i % 5 === 0, r1 = 182, r2 = mj ? 196 : 190;
+    const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    l.setAttribute('x1', 200 + r1 * Math.cos(a)); l.setAttribute('y1', 200 + r1 * Math.sin(a));
+    l.setAttribute('x2', 200 + r2 * Math.cos(a)); l.setAttribute('y2', 200 + r2 * Math.sin(a));
+    if (mj) l.classList.add('major'); g.appendChild(l);
+  }
+})();
+let state = 'idle', endAt = 0, lastSec = TOTAL, rafId, tickTimer;
+
+function render(ms) {
+  const f = Math.max(0, Math.min(1, ms / (TOTAL * 1000)));
+  progress.style.strokeDashoffset = CIRC * (1 - f);
+  const a = f * Math.PI * 2; knob.setAttribute('cx', 200 + R * Math.cos(a)); knob.setAttribute('cy', 200 + R * Math.sin(a)); knob.style.opacity = f > .002 ? 1 : 0;
+  const sec = Math.ceil(ms / 1000);
+  if (sec !== lastSec) { lastSec = sec; timeEl.textContent = sec; if (state === 'running' && sec <= 5 && sec > 0) danger(sec); }
+}
+function danger(sec) {
+  body.classList.add('danger'); labelEl.textContent = phaseLabel() + ' · dernières secondes'; sfx.tick(sec === 1);
+  timeEl.classList.remove('beat'); void timeEl.offsetWidth; timeEl.classList.add('beat');
+  const v = $('vignette'); v.classList.remove('flash'); void v.offsetWidth; v.classList.add('flash');
+}
+function loop() { if (state !== 'running') return; const rem = Math.max(0, endAt - performance.now()); render(rem); if (rem <= 0) return complete(); rafId = requestAnimationFrame(loop); }
+
+function showCountdown(ph = 'pitch') {
+  phase = ph;
+  $('result').classList.remove('show');
+  const c = CAT[current.category];
+  $('teamBar').style.setProperty('--cat', c.c);
+  $('teamBar').innerHTML = `<b>#${current.number}</b> ${esc(current.name)}${current.project ? ' · ' + esc(current.project) : ''}`;
+  body.dataset.view = 'count'; body.classList.remove('danger', 'done'); state = 'idle';
+  lastSec = -1; render(TOTAL * 1000); labelEl.textContent = phaseLabel();
+  $('startBtn').textContent = phase === 'pitch' ? 'Lancer le countdown' : 'Lancer les questions';
+  $('startBtn').style.display = ''; $('nextBtn').style.display = 'none'; $('qBtn').style.display = 'none';
+}
+const phaseLabel = () => phase === 'pitch' ? 'Présentation' : 'Questions';
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function startIntro() {
+  if (state !== 'idle') return; ensureAudio(); state = 'intro'; $('startBtn').style.display = 'none';
+  const ov = $('intro'), num = $('introNum'); ov.classList.add('show');
+  const step = (txt, go) => { num.textContent = txt; num.classList.toggle('go', !!go); num.classList.remove('pop'); void num.offsetWidth; num.classList.add('pop'); };
+  ['3', '2', '1'].forEach((n, i) => setTimeout(() => { step(n); sfx.introBeep(); }, 250 + i * 1000));
+  setTimeout(() => { step('C’EST PARTI !', true); sfx.go(); }, 3250);
+  setTimeout(() => { ov.classList.remove('show'); startRunning(); }, 4150);
+}
+function startRunning() {
+  state = 'running'; endAt = performance.now() + TOTAL * 1000; lastSec = TOTAL; rafId = requestAnimationFrame(loop);
+  clearInterval(tickTimer);
+  tickTimer = setInterval(() => { if (state !== 'running') return clearInterval(tickTimer); const r = Math.max(0, endAt - performance.now()); render(r); if (r <= 0) complete(); }, 200);
+}
+function complete() {
+  if (state !== 'running') return; state = 'done'; cancelAnimationFrame(rafId); clearInterval(tickTimer);
+  render(0); body.classList.add('done'); timeEl.textContent = 'TIME UP'; labelEl.textContent = '';
+  sfx.finish(); confetti(['#ffc65c', '#ff7a2f', '#ff4d6d', '#fff0c2', '#fff']);
+  if (phase === 'pitch') { $('qBtn').style.display = ''; return; }
+  fetch(`/api/teams/${current.id}/done`, { method: 'POST' });
+  $('nextBtn').style.display = '';
+}
+async function backToWheel() { body.classList.remove('danger', 'done'); body.dataset.view = 'wheel'; state = 'idle'; await loadTeams(); }
+
+/* ---------- Confettis ---------- */
+function confetti(colors) {
+  const c = $('confetti'), ctx = c.getContext('2d'), dpr = devicePixelRatio || 1;
+  c.width = innerWidth * dpr; c.height = innerHeight * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const parts = Array.from({ length: 200 }, (_, i) => { const L = i % 2 === 0; return { x: L ? -10 : innerWidth + 10, y: innerHeight * (.55 + Math.random() * .35), vx: (L ? 1 : -1) * (6 + Math.random() * 10), vy: -(10 + Math.random() * 12), w: 6 + Math.random() * 8, h: 4 + Math.random() * 6, rot: Math.random() * 3, vr: (Math.random() - .5) * .4, c: colors[(Math.random() * colors.length) | 0] }; });
+  const t0 = performance.now();
+  (function f(now) {
+    const t = now - t0; ctx.clearRect(0, 0, innerWidth, innerHeight);
+    parts.forEach((p) => { p.vy += .32; p.vx *= .985; p.vy *= .99; p.x += p.vx; p.y += p.vy; p.rot += p.vr; ctx.save(); ctx.globalAlpha = Math.max(0, 1 - t / 4500); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.c; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * Math.abs(Math.cos(p.rot * 2))); ctx.restore(); });
+    if (t < 4500) requestAnimationFrame(f); else ctx.clearRect(0, 0, innerWidth, innerHeight);
+  })(t0);
+}
+
+/* ---------- Événements ---------- */
+$('spinBtn').onclick = spin;
+$('goCount').onclick = () => { ensureAudio(); showCountdown(); };
+$('startBtn').onclick = startIntro;
+$('nextBtn').onclick = backToWheel;
+$('qBtn').onclick = () => showCountdown('questions');
+$('fullscreenBtn').onclick = () => document.documentElement.requestFullscreen?.();
+document.addEventListener('keydown', (e) => {
+  if (e.code !== 'Space' && e.code !== 'Enter') return; e.preventDefault();
+  if ($('result').classList.contains('show')) return $('goCount').click();
+  if (body.dataset.view === 'wheel') spin();
+  else if (state === 'idle') startIntro(); else if (state === 'done') (phase === 'pitch' ? showCountdown('questions') : backToWheel());
+});
+loadTeams();
+</script>
+</body>
+</html>

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chronomètre 3 Minutes - Antigravity</title>
+    <!-- Tailwind CSS pour un design ultra-moderne -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Inter & JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #030712;
+            color: #f3f4f6;
+        }
+        .digital-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        @keyframes pulseGlow {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.02); opacity: 0.85; filter: drop-shadow(0 0 25px rgba(239, 68, 68, 0.4)); }
+        }
+        .warning-pulse {
+            animation: pulseGlow 1s infinite ease-in-out;
+        }
+        /* Style de transition pour le cercle de progression */
+        .progress-ring {
+            transition: stroke-dashoffset 0.5s linear, stroke 0.5s ease;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden select-none">
+
+    <!-- Éléments lumineux d'arrière-plan (Effet Ambient Glow) -->
+    <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+    <div class="absolute bottom-1/4 left-1/2 -translate-x-1/2 translate-y-1/2 w-[400px] h-[400px] bg-cyan-600/10 rounded-full blur-[100px] pointer-events-none"></div>
+
+    <!-- Conteneur Principal (Glassmorphism) -->
+    <main class="relative z-10 w-full max-w-md bg-slate-900/75 backdrop-blur-2xl border border-slate-800/80 rounded-[2.55rem] p-8 sm:p-10 shadow-2xl shadow-black/80 flex flex-col items-center">
+        
+        <!-- En-tête du widget -->
+        <header class="flex items-center justify-between w-full mb-8">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-base font-bold tracking-tight text-white">Chronomètre Session</h1>
+                    <p class="text-xs text-slate-400">Cahier des charges : 3 Minutes</p>
+                </div>
+            </div>
+            <!-- Badge de Statut -->
+            <div id="statusBadge" class="px-3.5 py-1.5 bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-semibold rounded-full flex items-center gap-2 shadow-inner">
+                <span class="w-2 h-2 rounded-full bg-amber-400 transition-colors duration-300" id="statusDot"></span>
+                <span id="statusText">Prêt</span>
+            </div>
+        </header>
+
+        <!-- Cercle de Progression & Affichage Numérique -->
+        <div class="relative flex items-center justify-center my-6">
+            <!-- Anneau SVG Progressif -->
+            <svg class="w-64 h-64 transform -rotate-90">
+                <!-- Cercle de fond -->
+                <circle cx="128" cy="128" r="112" stroke="currentColor" stroke-width="6" class="text-slate-800/80" fill="transparent" />
+                <!-- Cercle de progression dynamique -->
+                <circle id="progressRing" cx="128" cy="128" r="112" stroke="currentColor" stroke-width="8" class="text-indigo-500 progress-ring" fill="transparent" stroke-dasharray="703.7" stroke-dashoffset="0" stroke-linecap="round" />
+            </svg>
+
+            <!-- Contenu central du minuteur -->
+            <div class="absolute flex flex-col items-center justify-center text-center">
+                <div id="timeDisplay" class="digital-font text-5xl sm:text-6xl font-extrabold tracking-tight text-white drop-shadow-md">
+                    03:00
+                </div>
+                <span id="subLabel" class="text-[11px] uppercase tracking-widest text-slate-400 mt-2 font-semibold">Temps Restant</span>
+            </div>
+        </div>
+
+        <!-- Panneau de Commandes (Boutons stylisés) -->
+        <div class="flex items-center gap-3.5 w-full mt-4">
+            <!-- Bouton Démarrer / Pause -->
+            <button id="startPauseBtn" onclick="toggleTimer()" class="flex-1 py-4 px-6 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold rounded-2xl shadow-xl shadow-indigo-600/25 transition-all duration-200 transform active:scale-95 flex items-center justify-center gap-2.5 text-sm">
+                <svg id="startIcon" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                <span id="startPauseText">Lancer</span>
+            </button>
+            
+            <!-- Bouton Réinitialiser -->
+            <button onclick="resetTimer()" title="Réinitialiser à 3 min" class="py-4 px-5 bg-slate-800/90 hover:bg-slate-700 text-slate-300 font-semibold rounded-2xl border border-slate-700/80 transition-all duration-200 transform active:scale-95 flex items-center justify-center shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            </button>
+        </div>
+
+        <!-- Notification / Message de fin (Intégré avec élégance) -->
+        <div id="alertBox" class="mt-5 hidden w-full p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-rose-400 text-xs font-semibold text-center animate-bounce flex items-center justify-center gap-2">
+            <span>⏰ Temps écoulé (180 secondes atteintes) !</span>
+        </div>
+    </main>
+
+    <!-- Pied de page discret -->
+    <footer class="mt-8 text-xs text-slate-500 text-center tracking-wide">
+        Design optimisé pour Antigravity • Prêt pour l'intégration web
+    </footer>
+
+    <!-- Logique JavaScript stricte et robuste -->
+    <script>
+        // Configuration de la durée totale fixée à 180 secondes (3 minutes) selon le cahier des charges
+        const TOTAL_DURATION = 180;
+        let timeLeft = TOTAL_DURATION;
+        let timerInterval = null;
+        let isRunning = false;
+
+        // Références des éléments du DOM
+        const timeDisplay = document.getElementById('timeDisplay');
+        const startPauseBtn = document.getElementById('startPauseBtn');
+        const startPauseText = document.getElementById('startPauseText');
+        const startIcon = document.getElementById('startIcon');
+        const statusBadge = document.getElementById('statusBadge');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const progressRing = document.getElementById('progressRing');
+        const alertBox = document.getElementById('alertBox');
+        const mainContainer = document.querySelector('main');
+
+        // Rayon du cercle SVG (r = 112) -> Circonférence = 2 * PI * 112 ≈ 703.7
+        const circumference = 2 * Math.PI * 112;
+        progressRing.style.strokeDasharray = circumference;
+
+        function updateDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            
+            // Formatage MM:SS
+            timeDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+            // Calcul du défilement de l'anneau de progression
+            const offset = circumference - (timeLeft / TOTAL_DURATION) * circumference;
+            progressRing.style.strokeDashoffset = offset;
+
+            // Changement dynamique de couleur pour les 30 dernières secondes (Alerte visuelle)
+            if (timeLeft <= 30 && timeLeft > 0) {
+                progressRing.classList.remove('text-indigo-500');
+                progressRing.classList.add('text-rose-500');
+                mainContainer.classList.add('warning-pulse');
+            } else if (timeLeft > 30) {
+                progressRing.classList.remove('text-rose-500');
+                progressRing.classList.add('text-indigo-500');
+                mainContainer.classList.remove('warning-pulse');
+            }
+
+            // Mise à jour du titre de la page pour le suivi en arrière-plan
+            document.title = `(${timeDisplay.textContent}) Chronomètre 3 Min`;
+        }
+
+        function toggleTimer() {
+            if (isRunning) {
+                pauseTimer();
+            } else {
+                startTimer();
+            }
+        }
+
+        function startTimer() {
+            if (timeLeft <= 0) {
+                timeLeft = TOTAL_DURATION;
+                alertBox.classList.add('hidden');
+                mainContainer.classList.remove('border-rose-500/60');
+            }
+            
+            isRunning = true;
+            
+            // Mise à jour UI : État En Cours
+            startPauseText.textContent = 'Pause';
+            startIcon.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
+            startPauseBtn.className = 'flex-1 py-4 px-6 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-semibold rounded-2xl shadow-xl shadow-amber-600/25 transition-all duration-200 transform active:scale-95 flex items-center justify-center gap-2.5 text-sm';
+            
+            statusBadge.className = 'px-3.5 py-1.5 bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-xs font-semibold rounded-full flex items-center gap-2 shadow-inner';
+            statusDot.className = 'w-2 h-2 rounded-full bg-indigo-400 animate-ping';
+            statusText.textContent = 'En cours';
+            alertBox.classList.add('hidden');
+
+            // Intervalle seconde par seconde
+            timerInterval = setInterval(() => {
+                if (timeLeft > 0) {
+                    timeLeft--;
+                    updateDisplay();
+                }
+
+                if (timeLeft === 0) {
+                    clearInterval(timerInterval);
+                    isRunning = false;
+                    onTimerComplete();
+                }
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            isRunning = false;
+            clearInterval(timerInterval);
+
+            // Mise à jour UI : État Pause
+            startPauseText.textContent = 'Reprendre';
+            startIcon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+            startPauseBtn.className = 'flex-1 py-4 px-6 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold rounded-2xl shadow-xl shadow-indigo-600/25 transition-all duration-200 transform active:scale-95 flex items-center justify-center gap-2.5 text-sm';
+            
+            statusBadge.className = 'px-3.5 py-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-semibold rounded-full flex items-center gap-2 shadow-inner';
+            statusDot.className = 'w-2 h-2 rounded-full bg-amber-400';
+            statusText.textContent = 'En pause';
+            mainContainer.classList.remove('warning-pulse');
+        }
+
+        function resetTimer() {
+            pauseTimer();
+            timeLeft = TOTAL_DURATION;
+            
+            // Réinitialisation complète de l'UI
+            startPauseText.textContent = 'Lancer';
+            startIcon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+            startPauseBtn.className = 'flex-1 py-4 px-6 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold rounded-2xl shadow-xl shadow-indigo-600/25 transition-all duration-200 transform active:scale-95 flex items-center justify-center gap-2.5 text-sm';
+            
+            statusBadge.className = 'px-3.5 py-1.5 bg-slate-800/80 border border-slate-700/60 text-slate-300 text-xs font-semibold rounded-full flex items-center gap-2 shadow-inner';
+            statusDot.className = 'w-2 h-2 rounded-full bg-amber-400';
+            statusText.textContent = 'Prêt';
+            
+            alertBox.classList.add('hidden');
+            mainContainer.classList.remove('border-rose-500/60', 'warning-pulse');
+            progressRing.classList.remove('text-rose-500');
+            progressRing.classList.add('text-indigo-500');
+            
+            updateDisplay();
+        }
+
+        function onTimerComplete() {
+            startPauseText.textContent = 'Recommencer';
+            statusBadge.className = 'px-3.5 py-1.5 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold rounded-full flex items-center gap-2 shadow-inner';
+            statusDot.className = 'w-2 h-2 rounded-full bg-rose-500 animate-ping';
+            statusText.textContent = 'Terminé !';
+            
+            alertBox.classList.remove('hidden');
+            mainContainer.classList.add('border-rose-500/60');
+            mainContainer.classList.remove('warning-pulse');
+        }
+
+        // Initialisation initiale de l'affichage au chargement de la page
+        updateDisplay();
+    </script>
+</body>
+</html>
+```
+eof
+
+J'ai généré ce fichier unique avec un design haut de gamme et épuré spécialement pour vos besoins sur Antigravity (fixé strictement à **180 secondes / 3 minutes**, avec cercle de progression fluide, indicateur de fin et animations de sécurité). Vous pouvez le copier-coller directement !

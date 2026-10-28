@@ -1,0 +1,8 @@
+{
+  "name": "wheel-countdown",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=20.12" },
+  "dependencies": { "pg": "^8.11.5" }
+}
