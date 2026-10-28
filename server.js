@@ -8,6 +8,7 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin';
 const PUBLIC = path.join(__dirname, 'public');
 const CATEGORIES = ['idea', 'lab', 'scale'];
+let countdownSeconds = 10; // Valeur par défaut (10s pour tester, réglable via /admin)
 
 /* ---------- Couche de stockage ---------- */
 let store;
@@ -75,6 +76,7 @@ function readBody(req) {
 const isAdmin = (req) => req.headers['x-admin-password'] === ADMIN_PASSWORD;
 
 async function api(req, res, p) {
+    if (req.method === 'GET' && p === '/api/config') return send(res, 200, { countdownSeconds });
     if (req.method === 'GET' && p === '/api/teams') return send(res, 200, await store.list());
 
     let m = p.match(/^\/api\/teams\/(\d+)\/done$/);
@@ -82,6 +84,14 @@ async function api(req, res, p) {
 
     if (!isAdmin(req)) return send(res, 401, { error: 'Mot de passe incorrect' });
     if (req.method === 'POST' && p === '/api/admin/check') return send(res, 200, { ok: true });
+
+    if (req.method === 'POST' && p === '/api/admin/config') {
+        const b = await readBody(req);
+        const s = parseInt(b.countdownSeconds, 10);
+        if (!s || s < 1) return send(res, 400, { error: 'Durée invalide' });
+        countdownSeconds = s;
+        return send(res, 200, { ok: true, countdownSeconds });
+    }
 
     if (req.method === 'POST' && p === '/api/admin/teams') {
         const b = await readBody(req);

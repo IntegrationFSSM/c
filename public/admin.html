@@ -48,7 +48,15 @@ a{color:var(--gold)}
     <div id="msg"></div>
   </div>
 
-  <div id="panel" hidden>
+    <div class="card">
+      <form id="configForm" style="grid-template-columns:auto 120px auto;align-items:center">
+        <label for="timerInput" style="font-weight:600">⏱️ Durée du compte à rebours (secondes) :</label>
+        <input id="timerInput" type="number" min="5" max="3600" value="10" required>
+        <button id="saveTimerBtn">Enregistrer la durée</button>
+      </form>
+      <div id="msgTimer" style="color:#5ef0a0;margin-top:8px"></div>
+    </div>
+
     <div class="card">
       <form id="addForm">
         <input id="number" type="number" min="1" placeholder="N°" required>
@@ -94,6 +102,10 @@ async function api(method, url, body) {
   return j;
 }
 async function refresh() {
+  try {
+    const cfg = await (await fetch('/api/config')).json();
+    if (cfg && cfg.countdownSeconds) $('timerInput').value = cfg.countdownSeconds;
+  } catch (e) {}
   const teams = await (await fetch('/api/teams')).json();
   const left = teams.filter((t) => !t.done).length;
   $('count').textContent = `${teams.length} équipes · ${left} restantes`;
@@ -107,6 +119,15 @@ async function enter() { $('login').hidden = true; $('panel').hidden = false; aw
 $('loginForm').onsubmit = async (e) => {
   e.preventDefault(); pw = $('pw').value;
   try { await api('POST', '/api/admin/check'); sessionStorage.setItem('pw', pw); enter(); } catch (er) { $('msg').textContent = er.message; }
+};
+$('configForm').onsubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const s = parseInt($('timerInput').value, 10);
+    await api('POST', '/api/admin/config', { countdownSeconds: s });
+    $('msgTimer').textContent = `✓ Durée enregistrée : ${s} secondes (s'appliquera aux prochains chronos)`;
+    setTimeout(() => { $('msgTimer').textContent = ''; }, 4000);
+  } catch (er) { $('msgTimer').style.color = '#ff9bb0'; $('msgTimer').textContent = er.message; }
 };
 $('addForm').onsubmit = async (e) => {
   e.preventDefault();
