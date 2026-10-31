@@ -214,20 +214,30 @@
         .btn:hover { transform: translateY(-3px) scale(1.03); box-shadow: 0 20px 50px -10px rgba(255, 122, 47, 1), inset 0 1px 0 rgba(255, 255, 255, .6); }
         .btn:active { transform: scale(.96); }
         .btn:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
-
-        .action-slot { height: 64px; display: grid; place-items: center; }
-        .action-slot .btn.hide { opacity: 0; transform: scale(.8); pointer-events: none; }
-        .running-hint {
-            font-size: .85rem; color: var(--muted); letter-spacing: 2px; text-transform: uppercase;
-            display: none; align-items: center; gap: 10px;
+        .btn.ghost {
+            background: rgba(20, 8, 20, .6);
+            color: var(--ink);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, .5);
+            border: 1px solid rgba(255, 255, 255, .25);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            font-size: .95rem;
+            padding: 14px 32px;
+            min-width: 200px;
         }
-        body.running .running-hint { display: inline-flex; }
+        .btn.ghost:hover {
+            background: rgba(255, 77, 109, .25);
+            border-color: rgba(255, 77, 109, .6);
+            box-shadow: 0 14px 40px -10px rgba(255, 77, 109, .5);
+            color: #fff;
+        }
+        .btn.ghost::after { display: none; }
+
+        .action-slot { height: 64px; display: flex; align-items: center; justify-content: center; gap: 12px; }
+        .action-slot .btn.hide { opacity: 0; transform: scale(.8); pointer-events: none; }
+        #skipBtn { display: none; }
+        body.running #skipBtn { display: inline-flex; }
         body.running #startBtn, body.intro #startBtn { display: none; }
-        .bars { display: inline-flex; gap: 3px; align-items: flex-end; height: 16px; }
-        .bars i { width: 3px; background: var(--gold); border-radius: 2px; animation: eq 1s ease-in-out infinite; }
-        .bars i:nth-child(2) { animation-delay: .2s; } .bars i:nth-child(3) { animation-delay: .4s; } .bars i:nth-child(4) { animation-delay: .6s; }
-        body.danger .bars i { background: var(--rose); }
-        @keyframes eq { 0%, 100% { height: 4px; } 50% { height: 16px; } }
 
         /* Bouton plein écran */
         .icon-btn {
@@ -369,6 +379,10 @@
                 <button class="btn" id="startBtn">
                     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
                     Lancer
+                </button>
+                <button class="btn ghost" id="skipBtn">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 5.27v13.46a1 1 0 0 0 1.57.82L15 13.06V18a1 1 0 0 0 2 0V6a1 1 0 0 0-2 0v4.94L6.57 4.45A1 1 0 0 0 5 5.27z"/></svg>
+                    Terminer plus tôt
                 </button>
                 <button class="btn" id="restartBtn">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
@@ -626,6 +640,7 @@
 
         /* ---------- Événements ---------- */
         $('startBtn').addEventListener('click', () => { if (state === 'idle') startIntro(); });
+        $('skipBtn').addEventListener('click', () => { if (state === 'running') complete(); });
         $('restartBtn').addEventListener('click', () => { if (state === 'done') restart(); });
         document.addEventListener('keydown', (e) => {
             if (e.code !== 'Space' && e.code !== 'Enter') return;
